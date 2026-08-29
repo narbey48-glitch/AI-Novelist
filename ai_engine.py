@@ -678,6 +678,7 @@ story construction.
     )
 
 
+
     user_prompt = f"""
 =========================================================
 BOOK INFORMATION
@@ -4525,6 +4526,8 @@ def rewrite_chapter(
     timeline="",
     previous_chapter_summaries="",
     protected_passages=None,
+    targeted_issues=None,
+    additional_editing_instructions="",
 ):
 
     if not chapter_draft.strip():
@@ -4988,6 +4991,77 @@ forcing the chapter into a predefined style.
         style_guidance["Cinematic Technical Thriller"],
     )
 
+    protected_passages = protected_passages or []
+    targeted_issues = targeted_issues or []
+
+    if targeted_issues:
+        targeted_issue_text = "\n\n".join(
+            f"TARGET ISSUE {index + 1}:\n{issue}"
+            for index, issue in enumerate(targeted_issues)
+        )
+
+        targeted_editing_rules = f"""
+=========================================================
+TARGETED EDITING MODE
+=========================================================
+
+TARGETED EDITING IS ACTIVE.
+
+Only address the selected editorial issues below:
+
+{targeted_issue_text}
+
+Make the SMALLEST EFFECTIVE CHANGES needed to materially improve
+those selected issues.
+
+Every change must directly address a selected issue.
+
+Do not make cosmetic synonym swaps or general polish outside the
+selected issues. If existing prose is already effective, leave it
+unchanged. Preserve unrelated dialogue, plot, pacing, characterization,
+exposition, description, transitions, terminology, and scene structure.
+
+Before keeping any change, verify both:
+1. The selected issue required this change.
+2. The new wording is materially better than the original.
+
+If either test fails, restore the original wording.
+
+Ignore unselected Priority Revisions and unselected Optional Improvements.
+"""
+    else:
+        targeted_editing_rules = """
+=========================================================
+TARGETED EDITING MODE
+=========================================================
+
+Targeted Editing is not active.
+Use the full Editor Report as the editing guide, subject to the selected
+Editing Mode.
+"""
+
+    if additional_editing_instructions.strip():
+        additional_instructions_block = f"""
+=========================================================
+WRITER'S ADDITIONAL EDITING INSTRUCTIONS
+=========================================================
+
+{additional_editing_instructions.strip()}
+"""
+    else:
+        additional_instructions_block = ""
+
+    if protected_passages:
+        protected_passages_block = (
+            "\n=========================================================\n"
+            "PROTECTED PASSAGES — DO NOT ALTER\n"
+            "=========================================================\n\n"
+            + "\n\n--- PROTECTED PASSAGE ---\n\n".join(protected_passages)
+        )
+    else:
+        protected_passages_block = ""
+
+
 
     user_prompt = f"""
 =========================================================
@@ -5182,6 +5256,13 @@ PREVIOUS CHAPTER SUMMARIES
 =========================================================
 
 {previous_chapter_summaries}
+
+
+{targeted_editing_rules}
+
+{additional_instructions_block}
+
+{protected_passages_block}
 
 
 =========================================================
@@ -5725,7 +5806,15 @@ Do not include:
         max_output_tokens=max_output_tokens,
     )
 
-    return response.output_text.strip()
+    edited_chapter = response.output_text.strip()
+
+    for passage in protected_passages:
+        if passage not in edited_chapter:
+            raise ValueError(
+                "Protected passage was altered or removed during editing."
+            )
+
+    return edited_chapter
 
 # =========================================================
 # CHARACTER NAME GENERATOR

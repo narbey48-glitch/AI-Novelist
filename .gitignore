@@ -27,3 +27,4 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.log
+editor_state.json

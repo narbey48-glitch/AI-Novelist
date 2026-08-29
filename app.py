@@ -3620,19 +3620,199 @@ with editor_tab:
                                 editor_report
                             )
 
-                    # =============================================
+                                        # =============================================
                     # STEP 2 — CREATE EDITED DRAFT
                     # =============================================
 
                     if editor_report:
                         st.divider()
-                        st.subheader("Step 2 — Create Edited Draft")
+                        st.subheader(
+                            "Step 2 — Create Edited Draft"
+                        )
 
                         st.caption(
-                            "The AI creates a separate edited candidate. "
-                            "The master draft remains unchanged until "
-                            "you explicitly accept the edited draft."
+                            "Choose exactly what the Editor should fix. "
+                            "The master remains untouched until you accept "
+                            "the edited candidate."
                         )
+
+                        # -----------------------------------------
+                        # EXTRACT PRIORITY REVISIONS
+                        # -----------------------------------------
+
+                        priority_match = re.search(
+                            r"##\s*Priority Revisions"
+                            r"(.*?)"
+                            r"(?=##\s*Optional Improvements|"
+                            r"##\s*Editor Verdict|\Z)",
+                            editor_report,
+                            flags=(
+                                re.IGNORECASE
+                                | re.DOTALL
+                            ),
+                        )
+
+                        priority_section = (
+                            priority_match.group(1)
+                            if priority_match
+                            else ""
+                        )
+
+                        issue_pattern = re.compile(
+                            r"(?P<number>\d+)\.\s*"
+                            r"\**PROBLEM:\**\s*"
+                            r"(?P<problem>.*?)"
+                            r"(?=\n\s*-\s*\**WHY IT MATTERS:\**)"
+                            r".*?"
+                            r"\**SEVERITY:\**\s*"
+                            r"(?P<severity>"
+                            r"Critical|Major|Moderate|Minor"
+                            r")",
+                            flags=(
+                                re.IGNORECASE
+                                | re.DOTALL
+                            ),
+                        )
+
+                        extracted_issues = []
+
+                        for match in issue_pattern.finditer(
+                            priority_section
+                        ):
+                            problem = (
+                                match.group("problem")
+                                .strip()
+                                .replace("\n", " ")
+                            )
+
+                            severity = (
+                                match.group("severity")
+                                .strip()
+                                .title()
+                            )
+
+                            full_issue = (
+                                match.group(0).strip()
+                            )
+
+                            label = (
+                                f"{severity} — {problem}"
+                            )
+
+                            extracted_issues.append(
+                                {
+                                    "label": label,
+                                    "text": full_issue,
+                                    "severity": severity,
+                                }
+                            )
+
+                        # -----------------------------------------
+                        # TARGETED EDITING
+                        # -----------------------------------------
+
+                        st.markdown(
+                            "### 🎯 Targeted Editing"
+                        )
+
+                        targeted_editing = st.checkbox(
+                            "Only edit selected Analyzer issues",
+                            value=bool(
+                                extracted_issues
+                            ),
+                            key=(
+                                f"targeted_editing_"
+                                f"{editor_chapter_number}"
+                            ),
+                            help=(
+                                "When enabled, the AI is instructed "
+                                "to leave unrelated prose alone."
+                            ),
+                        )
+
+                        selected_issue_labels = []
+
+                        if targeted_editing:
+
+                            if extracted_issues:
+                                default_issue_labels = [
+                                    item["label"]
+                                    for item in extracted_issues
+                                    if item["severity"]
+                                    in {
+                                        "Critical",
+                                        "Major",
+                                        "Moderate",
+                                    }
+                                ]
+
+                                if not default_issue_labels:
+                                    default_issue_labels = [
+                                        item["label"]
+                                        for item in extracted_issues
+                                    ]
+
+                                selected_issue_labels = (
+                                    st.multiselect(
+                                        "Select Analyzer issues to fix",
+                                        options=[
+                                            item["label"]
+                                            for item
+                                            in extracted_issues
+                                        ],
+                                        default=(
+                                            default_issue_labels
+                                        ),
+                                        key=(
+                                            f"selected_editor_issues_"
+                                            f"{editor_chapter_number}"
+                                        ),
+                                    )
+                                )
+
+                                st.caption(
+                                    f"{len(selected_issue_labels)} "
+                                    "target issue(s) selected."
+                                )
+
+                            else:
+                                st.info(
+                                    "No structured Priority Revisions "
+                                    "were found in this Editor Report. "
+                                    "You can use Additional Editing "
+                                    "Instructions below."
+                                )
+
+                        else:
+                            st.caption(
+                                "Full-report editing is active. "
+                                "The Editor may address all relevant "
+                                "issues in the report."
+                            )
+
+                        # -----------------------------------------
+                        # ADDITIONAL INSTRUCTIONS
+                        # -----------------------------------------
+
+                        additional_editing_instructions = (
+                            st.text_area(
+                                "Additional Editing Instructions",
+                                height=130,
+                                key=(
+                                    f"additional_editing_"
+                                    f"{editor_chapter_number}"
+                                ),
+                                placeholder=(
+                                    "Optional: e.g. Tighten only the "
+                                    "Sofia/Lucas exchange. Preserve "
+                                    "the interrogation scene exactly."
+                                ),
+                            )
+                        )
+
+                        # -----------------------------------------
+                        # CREATE EDIT
+                        # -----------------------------------------
 
                         if st.button(
                             f"✍️ Create {editing_mode}",
@@ -3643,164 +3823,213 @@ with editor_tab:
                             ),
                         ):
 
-                            previous_summaries = (
-                                get_previous_chapter_summaries(
+                            if (
+                                targeted_editing
+                                and extracted_issues
+                                and not selected_issue_labels
+                                and not additional_editing_instructions.strip()
+                            ):
+                                st.error(
+                                    "Select at least one Analyzer issue "
+                                    "or enter an Additional Editing "
+                                    "Instruction."
+                                )
+
+                            else:
+                                previous_summaries = (
+                                    get_previous_chapter_summaries(
+                                        project_id,
+                                        editor_chapter_number,
+                                    )
+                                )
+
+                                current_protection_text = (
+                                    st.session_state.get(
+                                        protection_key,
+                                        "",
+                                    )
+                                )
+
+                                protected_passages = (
+                                    parse_protected_passages(
+                                        current_protection_text
+                                    )
+                                )
+
+                                save_protected_passages_text(
                                     project_id,
                                     editor_chapter_number,
+                                    current_protection_text,
                                 )
-                            )
 
-                            current_protection_text = (
-                                st.session_state.get(
-                                    protection_key,
-                                    "",
-                                )
-                            )
+                                selected_issue_texts = []
 
-                            protected_passages = (
-                                parse_protected_passages(
-                                    current_protection_text
-                                )
-                            )
-
-                            save_protected_passages_text(
-                                project_id,
-                                editor_chapter_number,
-                                current_protection_text,
-                            )
-
-                            with st.spinner(
-                                f"Creating {editing_mode} for "
-                                f"Chapter {editor_chapter_number}..."
-                            ):
-
-                                try:
-                                    editor_report_for_rewrite = editor_report
-
-                                    if protected_passages:
-                                        locked_text = "\n\n".join(
-                                            f"LOCKED PASSAGE {index + 1}:\n{passage}"
-                                            for index, passage in enumerate(
-                                                protected_passages
-                                            )
-                                        )
-                                        editor_report_for_rewrite += (
-                                            "\n\n# PASSAGE PROTECTION\n"
-                                            "The following passages are locked by the writer. "
-                                            "They MUST remain present word-for-word in the edited "
-                                            "chapter. Do not paraphrase, shorten, expand, reorder "
-                                            "internally, or otherwise alter their wording.\n\n"
-                                            + locked_text
-                                        )
-
-                                    rewrite_kwargs = {
-                                        "book": current_book(),
-                                        "chapter_number": editor_chapter_number,
-                                        "chapter_plan": editor_chapter_data[
-                                            "chapter_plan"
-                                        ],
-                                        "chapter_draft": master_draft,
-                                        "editor_report": editor_report_for_rewrite,
-                                        "editing_mode": editing_mode,
-                                        "story_architecture": (
-                                            st.session_state.story_architecture
-                                        ),
-                                        "character_bible": (
-                                            st.session_state.character_bible
-                                        ),
-                                        "world_bible": (
-                                            st.session_state.world_bible
-                                        ),
-                                        "timeline": st.session_state.timeline,
-                                        "previous_chapter_summaries": (
-                                            previous_summaries
-                                        ),
-                                    }
-
-                                    # IMPORTANT: do not pass protected_passages as a
-                                    # keyword argument. Passage protection is carried
-                                    # through the editor report so this remains
-                                    # compatible with every rewrite_chapter signature.
-                                    new_edited_draft = rewrite_chapter(
-                                        **rewrite_kwargs
-                                    )
-
-                                    missing_locked = [
-                                        passage
-                                        for passage in protected_passages
-                                        if passage not in new_edited_draft
+                                if targeted_editing:
+                                    selected_issue_texts = [
+                                        item["text"]
+                                        for item in extracted_issues
+                                        if item["label"]
+                                        in selected_issue_labels
                                     ]
 
-                                    if missing_locked:
-                                        raise ValueError(
-                                            "The AI changed or removed a protected passage. "
-                                            "The edited draft was rejected and nothing was saved."
+                                with st.spinner(
+                                    f"Creating {editing_mode} for "
+                                    f"Chapter "
+                                    f"{editor_chapter_number}..."
+                                ):
+
+                                    try:
+                                        new_edited_draft = (
+                                            rewrite_chapter(
+                                                book=current_book(),
+                                                chapter_number=(
+                                                    editor_chapter_number
+                                                ),
+                                                chapter_plan=(
+                                                    editor_chapter_data[
+                                                        "chapter_plan"
+                                                    ]
+                                                ),
+                                                chapter_draft=(
+                                                    master_draft
+                                                ),
+                                                editor_report=(
+                                                    editor_report
+                                                ),
+                                                editing_mode=(
+                                                    editing_mode
+                                                ),
+                                                story_architecture=(
+                                                    st.session_state
+                                                    .story_architecture
+                                                ),
+                                                character_bible=(
+                                                    st.session_state
+                                                    .character_bible
+                                                ),
+                                                world_bible=(
+                                                    st.session_state
+                                                    .world_bible
+                                                ),
+                                                timeline=(
+                                                    st.session_state
+                                                    .timeline
+                                                ),
+                                                previous_chapter_summaries=(
+                                                    previous_summaries
+                                                ),
+                                                protected_passages=(
+                                                    protected_passages
+                                                ),
+                                                targeted_issues=(
+                                                    selected_issue_texts
+                                                ),
+                                                additional_editing_instructions=(
+                                                    additional_editing_instructions
+                                                ),
+                                            )
                                         )
 
-                                    if edited_draft:
-                                        add_editor_version(
-                                            project_id,
-                                            editor_chapter_number,
-                                            edited_draft,
-                                            "Previous edited candidate",
+                                        missing_locked = [
+                                            passage
+                                            for passage
+                                            in protected_passages
+                                            if passage
+                                            not in new_edited_draft
+                                        ]
+
+                                        if missing_locked:
+                                            raise ValueError(
+                                                "The AI changed or removed "
+                                                "a protected passage. "
+                                                "The edited draft was "
+                                                "rejected and nothing "
+                                                "was saved."
+                                            )
+
+                                        if edited_draft:
+                                            add_editor_version(
+                                                project_id,
+                                                editor_chapter_number,
+                                                edited_draft,
+                                                (
+                                                    "Previous edited "
+                                                    "candidate"
+                                                ),
+                                            )
+
+                                        save_chapter(
+                                            project_id=project_id,
+                                            chapter_number=(
+                                                editor_chapter_number
+                                            ),
+                                            title=(
+                                                editor_chapter_data[
+                                                    "title"
+                                                ]
+                                            ),
+                                            chapter_plan=(
+                                                editor_chapter_data[
+                                                    "chapter_plan"
+                                                ]
+                                            ),
+                                            scene_plan=(
+                                                editor_chapter_data[
+                                                    "scene_plan"
+                                                ]
+                                            ),
+                                            draft=master_draft,
+                                            edited_draft=(
+                                                new_edited_draft
+                                            ),
+                                            continuity_report=(
+                                                editor_report
+                                            ),
+                                            chapter_summary=(
+                                                editor_chapter_data[
+                                                    "chapter_summary"
+                                                ]
+                                            ),
+                                            status="edited",
                                         )
 
-                                    save_chapter(
-                                        project_id=project_id,
-                                        chapter_number=(
-                                            editor_chapter_number
-                                        ),
-                                        title=editor_chapter_data["title"],
-                                        chapter_plan=(
-                                            editor_chapter_data[
-                                                "chapter_plan"
-                                            ]
-                                        ),
-                                        scene_plan=(
-                                            editor_chapter_data[
-                                                "scene_plan"
-                                            ]
-                                        ),
-                                        draft=master_draft,
-                                        edited_draft=(
-                                            new_edited_draft
-                                        ),
-                                        continuity_report=(
-                                            editor_report
-                                        ),
-                                        chapter_summary=(
-                                            editor_chapter_data[
-                                                "chapter_summary"
-                                            ]
-                                        ),
-                                        status="edited",
-                                    )
+                                        manual_key = (
+                                            f"manual_editor_text_"
+                                            f"{project_id}_"
+                                            f"{editor_chapter_number}"
+                                        )
 
-                                    manual_key = (
-                                        f"manual_editor_text_"
-                                        f"{project_id}_"
-                                        f"{editor_chapter_number}"
-                                    )
-                                    st.session_state.pop(
-                                        manual_key,
-                                        None,
-                                    )
-                                    st.session_state.pop(
-                                        f"{manual_key}_source",
-                                        None,
-                                    )
+                                        st.session_state.pop(
+                                            manual_key,
+                                            None,
+                                        )
 
-                                    st.success(
-                                        f"{editing_mode} completed for "
-                                        f"Chapter {editor_chapter_number}."
-                                    )
-                                    st.rerun()
+                                        st.session_state.pop(
+                                            f"{manual_key}_source",
+                                            None,
+                                        )
 
-                                except Exception as error:
-                                    st.error(
-                                        f"Chapter edit failed: "
-                                        f"{error}"
-                                    )
+                                        if targeted_editing:
+                                            st.success(
+                                                "Targeted edit completed. "
+                                                "Only the selected issues "
+                                                "were supplied as editing "
+                                                "targets."
+                                            )
+                                        else:
+                                            st.success(
+                                                f"{editing_mode} completed "
+                                                f"for Chapter "
+                                                f"{editor_chapter_number}."
+                                            )
+
+                                        st.rerun()
+
+                                    except Exception as error:
+                                        st.error(
+                                            f"Chapter edit failed: "
+                                            f"{error}"
+                                        )
 
                     # =============================================
                     # EDITED DRAFT WORKSPACE
