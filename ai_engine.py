@@ -3886,6 +3886,232 @@ def generate_chapter_draft(
 # EDITOR ANALYST
 # =========================================================
 
+import re
+
+
+def _force_editor_verdict(editor_report):
+    """
+    Deterministically corrects the AI's final editor verdict.
+
+    The AI still performs the editorial analysis, but Python makes
+    the final decision based on the severities the AI itself reported.
+
+    This prevents endless Standard Edit / Light Polish loops.
+    """
+
+    if not editor_report:
+        return editor_report
+
+    report_upper = editor_report.upper()
+
+    # -----------------------------------------------------
+    # Extract Priority Revisions section only
+    # -----------------------------------------------------
+
+    priority_match = re.search(
+        r"##\s*PRIORITY REVISIONS(.*?)(?=##\s*OPTIONAL IMPROVEMENTS|##\s*EDITOR VERDICT|\Z)",
+        editor_report,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    priority_section = (
+        priority_match.group(1)
+        if priority_match
+        else ""
+    )
+
+    priority_upper = priority_section.upper()
+
+    # -----------------------------------------------------
+    # Count issue severities
+    # -----------------------------------------------------
+
+    critical_count = len(
+        re.findall(
+            r"SEVERITY:\s*\**CRITICAL",
+            priority_upper,
+        )
+    )
+
+    major_count = len(
+        re.findall(
+            r"SEVERITY:\s*\**MAJOR",
+            priority_upper,
+        )
+    )
+
+    moderate_count = len(
+        re.findall(
+            r"SEVERITY:\s*\**MODERATE",
+            priority_upper,
+        )
+    )
+
+    minor_count = len(
+        re.findall(
+            r"SEVERITY:\s*\**MINOR",
+            priority_upper,
+        )
+    )
+
+    # -----------------------------------------------------
+    # Detect genuine continuity problems
+    # -----------------------------------------------------
+
+    continuity_match = re.search(
+        r"##\s*CONTINUITY FINDINGS(.*?)(?=##\s*CHARACTER FINDINGS|\Z)",
+        editor_report,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    continuity_section = (
+        continuity_match.group(1).strip()
+        if continuity_match
+        else ""
+    )
+
+    continuity_upper = continuity_section.upper()
+
+    continuity_is_sound = any(
+        phrase in continuity_upper
+        for phrase in [
+            "NO SIGNIFICANT CONTINUITY CONFLICTS DETECTED",
+            "NO CONTINUITY CONFLICTS DETECTED",
+            "NO SIGNIFICANT CONTINUITY ISSUES",
+            "NO CONTINUITY ISSUES",
+        ]
+    )
+
+    # -----------------------------------------------------
+    # Determine verdict in Python
+    # -----------------------------------------------------
+
+    if not continuity_is_sound:
+        continuity_problem_words = [
+            "CONTRADICTION",
+            "CONFLICT",
+            "INCONSISTENCY",
+            "TIMELINE ERROR",
+            "IMPOSSIBLE",
+            "VIOLATES",
+        ]
+
+        genuine_continuity_problem = any(
+            word in continuity_upper
+            for word in continuity_problem_words
+        )
+
+        if genuine_continuity_problem:
+            forced_verdict = "CONTINUITY REPAIR REQUIRED"
+            forced_reason = (
+                "The analysis identified a genuine continuity conflict "
+                "that should be repaired before normal editing continues."
+            )
+
+        elif critical_count > 0:
+            forced_verdict = "NEEDS DEEP EDIT"
+            forced_reason = (
+                "The analysis identified at least one Critical issue "
+                "requiring substantial reconstruction."
+            )
+
+        elif major_count >= 2:
+            forced_verdict = "NEEDS DEEP EDIT"
+            forced_reason = (
+                "The analysis identified multiple Major issues requiring "
+                "substantial chapter reconstruction."
+            )
+
+        elif major_count == 1:
+            forced_verdict = "NEEDS STANDARD EDIT"
+            forced_reason = (
+                "The analysis identified a Major issue requiring meaningful "
+                "rewriting beyond a light polish."
+            )
+
+        elif moderate_count > 0:
+            forced_verdict = "READY FOR LIGHT POLISH"
+            forced_reason = (
+                "The chapter is structurally sound, but the analysis identified "
+                "localized Moderate issues that can be improved with a Light Polish."
+            )
+
+        else:
+            forced_verdict = "EDITING COMPLETE"
+            forced_reason = (
+                "The chapter has no Critical, Major, or Moderate revision issues. "
+                "Any remaining concerns are Minor or optional, so further editing "
+                "would likely produce only marginal changes."
+            )
+
+    else:
+
+        if critical_count > 0:
+            forced_verdict = "NEEDS DEEP EDIT"
+            forced_reason = (
+                "The analysis identified at least one Critical issue requiring "
+                "substantial reconstruction."
+            )
+
+        elif major_count >= 2:
+            forced_verdict = "NEEDS DEEP EDIT"
+            forced_reason = (
+                "The analysis identified multiple Major issues requiring "
+                "substantial reconstruction."
+            )
+
+        elif major_count == 1:
+            forced_verdict = "NEEDS STANDARD EDIT"
+            forced_reason = (
+                "The analysis identified a Major issue requiring meaningful "
+                "rewriting beyond a Light Polish."
+            )
+
+        elif moderate_count > 0:
+            forced_verdict = "READY FOR LIGHT POLISH"
+            forced_reason = (
+                "The chapter is structurally sound, but localized Moderate "
+                "issues remain that are appropriate for Light Polish."
+            )
+
+        else:
+            forced_verdict = "EDITING COMPLETE"
+            forced_reason = (
+                "The chapter has no Critical, Major, or Moderate revision issues. "
+                "Continuity is sound and any remaining concerns are Minor or "
+                "optional. Further editing is not required."
+            )
+
+    # -----------------------------------------------------
+    # Replace AI verdict with deterministic verdict
+    # -----------------------------------------------------
+
+    replacement = (
+        "## Editor Verdict\n\n"
+        f"{forced_verdict}\n\n"
+        f"{forced_reason}"
+    )
+
+    verdict_pattern = re.compile(
+        r"##\s*EDITOR VERDICT.*\Z",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    if verdict_pattern.search(editor_report):
+        editor_report = verdict_pattern.sub(
+            replacement,
+            editor_report,
+        )
+    else:
+        editor_report = (
+            editor_report.rstrip()
+            + "\n\n"
+            + replacement
+        )
+
+    return editor_report
+
+
 def analyze_chapter(
     book,
     chapter_number,
@@ -3899,36 +4125,11 @@ def analyze_chapter(
     editing_mode="Standard Edit",
     editing_checks=None,
 ):
-
     if not chapter_draft or not chapter_draft.strip():
-        raise ValueError(
-            "A completed chapter draft is required before analysis."
-        )
+        return "No chapter draft was provided for analysis."
 
     if editing_checks is None:
-        editing_checks = {}
-
-    # -----------------------------------------------------
-    # ENABLED EDITOR CHECKS
-    # -----------------------------------------------------
-
-    enabled_checks = [
-        check_name
-        for check_name, enabled in editing_checks.items()
-        if enabled
-    ]
-
-    if enabled_checks:
-        checks_text = "\n".join(
-            f"- {check}"
-            for check in enabled_checks
-        )
-    else:
-        checks_text = "- Full professional editorial analysis"
-
-    # -----------------------------------------------------
-    # WRITING STYLE SETTINGS
-    # -----------------------------------------------------
+        editing_checks = []
 
     writing_style_profile = book.get(
         "writing_style_profile",
@@ -3975,135 +4176,29 @@ def analyze_chapter(
         80,
     )
 
-    # -----------------------------------------------------
-    # ANALYZER PROMPT
-    # -----------------------------------------------------
+    enabled_checks = (
+        "\n".join(
+            f"- {check}"
+            for check in editing_checks
+        )
+        if editing_checks
+        else "- Full editorial analysis"
+    )
 
     user_prompt = f"""
-=========================================================
-ROLE
-=========================================================
+You are performing a professional editorial analysis of Chapter {chapter_number}.
 
-You are performing a professional developmental,
-line-level, continuity, and style analysis of a novel
-chapter.
+Analyze the chapter.
 
-You are an ANALYST ONLY.
+Do NOT rewrite the chapter.
 
-DO NOT rewrite the chapter.
-
-DO NOT generate replacement prose unless a very short
-example is absolutely necessary to explain an editorial
-problem.
-
-Do not invent weaknesses simply to fill the report.
-
-Judge the chapter against the author's actual intentions,
-chapter plan, established story information, and selected
-Writing Style settings.
+Do NOT invent problems merely to justify another edit.
 
 =========================================================
-BOOK INFORMATION
+BOOK
 =========================================================
 
-TITLE:
-{book.get('title', '')}
-
-GENRE:
-{book.get('genre', '')}
-
-REGION:
-{book.get('region', '')}
-
-TIME PERIOD:
-{book.get('period', '')}
-
-PRIMARY PLOT:
-{book.get('primary_plot', '')}
-
-SECONDARY PLOT:
-{book.get('secondary_plot', 'None')}
-
-CHARACTER ARC:
-{book.get('character_arc', '')}
-
-RELATIONSHIP ARC:
-{book.get('relationship_arc', 'None')}
-
-MYSTERY ENGINE:
-{book.get('mystery_engine', 'None')}
-
-STRUCTURE COMPLEXITY:
-{book.get('structure_complexity', '')}
-
-=========================================================
-WRITING STYLE PROFILE
-=========================================================
-
-PROFILE:
-{writing_style_profile}
-
-The following values are intentional author controls.
-Score the chapter according to how successfully it matches
-these TARGETS, not according to some generic idea of good
-writing.
-
-Dialogue Style: {style_dialogue}/100
-Technical Detail: {style_technical_detail}/100
-Pacing: {style_pacing}/100
-Moral Complexity: {style_moral_complexity}/100
-Description Density: {style_description}/100
-Violence Treatment: {style_violence}/100
-Institutional / Political Detail:
-{style_institutional_detail}/100
-Subtext: {style_subtext}/100
-
-INTERPRETATION:
-
-Dialogue Style
-0 = highly restrained/minimal
-100 = highly expressive/conversational
-
-Technical Detail
-0 = minimal technical information
-100 = extensive credible procedural/operational detail
-
-Pacing
-0 = slow, contemplative development
-100 = extremely rapid narrative movement
-
-Moral Complexity
-0 = clear heroes/villains
-100 = conflicting motives, compromises, ambiguity
-
-Description Density
-0 = sparse description
-100 = highly detailed description
-
-Violence Treatment
-0 = mostly implied/off-page
-100 = direct and detailed depiction
-
-Institutional / Political Detail
-0 = minimal institutional systems
-100 = detailed command structures, agencies,
-bureaucracies, political and operational systems
-
-Subtext
-0 = characters state intentions directly
-100 = meaning is heavily implied through behaviour,
-silence, conflict, avoidance, and indirect dialogue
-
-=========================================================
-EDITOR SETTINGS
-=========================================================
-
-EDITING MODE:
-{editing_mode}
-
-ENABLED CHECKS:
-
-{checks_text}
+{book}
 
 =========================================================
 CHAPTER NUMBER
@@ -4112,16 +4207,53 @@ CHAPTER NUMBER
 Chapter {chapter_number}
 
 =========================================================
-AUTHORITATIVE CHAPTER PLAN
+EDITING MODE
 =========================================================
 
-{chapter_plan}
+{editing_mode}
 
 =========================================================
-CHAPTER DRAFT
+ENABLED CHECKS
 =========================================================
 
-{chapter_draft}
+{enabled_checks}
+
+=========================================================
+WRITING STYLE TARGETS
+=========================================================
+
+Writing Style Profile:
+{writing_style_profile}
+
+Dialogue:
+{style_dialogue}/100
+
+Technical Detail:
+{style_technical_detail}/100
+
+Pacing:
+{style_pacing}/100
+
+Moral Complexity:
+{style_moral_complexity}/100
+
+Description Density:
+{style_description}/100
+
+Violence Treatment:
+{style_violence}/100
+
+Institutional / Political Detail:
+{style_institutional_detail}/100
+
+Subtext:
+{style_subtext}/100
+
+These are creative targets.
+
+Judge whether the chapter uses these traits effectively.
+
+Do not assume higher always means better.
 
 =========================================================
 STORY ARCHITECTURE
@@ -4154,466 +4286,227 @@ PREVIOUS CHAPTER SUMMARIES
 {previous_chapter_summaries}
 
 =========================================================
-ANALYSIS RULES
+CHAPTER PLAN
 =========================================================
 
-Treat the Chapter Plan as authoritative unless it directly
-contradicts established continuity.
-
-Determine whether the chapter actually accomplishes its
-planned purpose.
-
-Check all established character names, relationships,
-motivations, knowledge, injuries, locations, chronology,
-technology, institutions, and previous events.
-
-Do not punish the chapter for being deliberately restrained
-if the style controls request restraint.
-
-Do not praise excessive technical detail simply because
-technical detail exists. It must serve story, tension,
-credibility, character, or decision-making.
-
-Do not demand faster pacing merely because action exists.
-Judge pacing against the selected Pacing target.
-
-Dialogue must be evaluated against both Dialogue Style and
-Subtext settings.
-
-Description must be evaluated against the Description
-Density target.
-
-Violence must be evaluated against the Violence Treatment
-target rather than against personal preference.
-
-Institutional detail should be judged for both quantity and
-credibility.
-
-Moral complexity should emerge naturally through motive,
-choice, competing interests, consequences, and uncertainty.
-
-Explicitly identify contradictions with prior chapters.
-
-Distinguish clearly between:
-
-1. Actual continuity errors
-2. Structural problems
-3. Style-target mismatches
-4. Craft weaknesses
-5. Optional improvements
-
-Do not treat optional improvements as errors.
-=========================================================
-ANTI-OVEREDITING RULES
-=========================================================
-
-The purpose of this analysis is NOT to find enough faults to
-justify another edit.
-
-A strong chapter should be allowed to finish the editing
-cycle.
-
-Do not recommend a Standard Edit merely because individual
-categories could still be improved.
-
-Scores between 7.5 and 8.4 represent GOOD professional
-execution with room for refinement.
-
-Scores between 8.5 and 10.0 represent STRONG execution.
-
-A score below 8.0 does NOT automatically require a Standard
-Edit.
-
-Minor or Moderate local weaknesses should normally be
-handled by Light Polish when:
-
-- the chapter objective has been achieved
-- plot progression is functioning
-- continuity is sound
-- there are no Major or Critical problems
-- the chapter does not require substantial scene rewriting
-
-Do not recommend changes simply to create variation.
-
-Do not recommend:
-
-- additional POV characters
-- additional scenes
-- additional characters
-- additional exposition
-- additional conflict
-- structural changes
-
-unless there is a specific demonstrated problem that requires
-such a change.
-
-Do not damage a strong element in order to improve another
-category.
-
-For example, if POV consistency is strong, do not recommend
-adding another viewpoint merely to create variety.
-
-Optional improvements must be genuinely useful and must not
-contradict strengths identified elsewhere in the report.
-
-It is acceptable for:
-
-OPTIONAL IMPROVEMENTS
-
-to contain:
-
-None recommended.
+{chapter_plan}
 
 =========================================================
-VERDICT CALIBRATION
+CHAPTER DRAFT
 =========================================================
 
-Use the following rules when selecting the Editor Verdict.
-
-READY FOR LIGHT POLISH
-
-Choose this when:
-
-- the Chapter Objective is substantially achieved
-- continuity is sound
-- there are no Critical problems
-- there are no Major problems requiring scene reconstruction
-- most scorecard categories are 7.5 or higher
-- remaining weaknesses are local Moderate or Minor issues
-- improvements can be made without substantially rewriting
-  scenes
-
-A chapter does NOT need to be perfect to receive this
-verdict.
-
-Dialogue refinement, stronger subtext, small exposition
-reductions, sentence-level improvements, description
-adjustments, and similar localized changes normally belong
-in Light Polish.
-
-NEEDS STANDARD EDIT
-
-Choose this only when meaningful rewriting is required.
-
-Examples include:
-
-- multiple important categories below 7.0
-- significant pacing problems across scenes
-- weak or inconsistent character motivation
-- substantial dialogue problems throughout the chapter
-- important Chapter Plan objectives only partially achieved
-- repeated exposition or structural problems
-- tension failing across substantial portions of the chapter
-- several Moderate problems whose combined effect materially
-  weakens the chapter
-
-Do NOT choose Standard Edit merely because two or three
-categories score in the 7.0-7.9 range.
-
-NEEDS DEEP EDIT
-
-Choose this when the chapter has fundamental problems such
-as:
-
-- major structural failure
-- important Chapter Plan objectives missed
-- scenes requiring reconstruction
-- major character logic failures
-- plot progression substantially failing
-- several important categories below 6.0
-- the chapter requires substantial rewriting rather than
-  refinement
-
-CONTINUITY REPAIR REQUIRED
-
-Choose this only when genuine continuity contradictions
-exist that should be repaired before normal editing.
-
-Examples include:
-
-- timeline contradictions
-- impossible character knowledge
-- conflicting established facts
-- incorrect identities or relationships
-- incompatible locations
-- contradictory injuries or physical conditions
-- violations of established world rules
-
-Minor wording inconsistencies are not continuity repair
-issues.
+{chapter_draft}
 
 =========================================================
-VERDICT CONSISTENCY CHECK
+EDITORIAL PRINCIPLES
 =========================================================
 
-Before returning the final verdict, compare it against your
-own scorecard and Priority Revisions.
+Judge actual writing quality.
 
-The verdict MUST logically match the report.
+Do not search for faults simply because an Editor Report
+must be produced.
 
-If:
+Do not punish deliberate stylistic choices.
 
-- there are no Critical issues
-- there are no Major issues
-- continuity is sound
-- the Chapter Objective is achieved
-- most categories score 7.5 or higher
-- Priority Revisions contain only Moderate and Minor issues
+Do not recommend unnecessary:
 
-then the default verdict should be:
+- characters
+- POVs
+- scenes
+- exposition
+- conflict
+- structural complexity
 
-READY FOR LIGHT POLISH
+A professional chapter does not need perfect scores.
 
-Do not return NEEDS STANDARD EDIT in that situation unless
-you identify a specific reason that substantial rewriting is
-still required.
+Scores:
 
-If you override this rule, explicitly identify that reason
-in the Editor Verdict explanation.
+9.0-10.0 = Excellent
+8.0-8.9 = Strong
+7.5-7.9 = Good
+7.0-7.4 = Acceptable
+Below 7.0 = Meaningful weakness
+
 =========================================================
-MANDATORY SCORECARD
+EDITORIAL SCORECARD
 =========================================================
 
-Score EVERY category from 0.0 to 10.0.
+Score each category from 0.0 to 10.0.
 
 Use one decimal place.
 
-For each category provide:
-
-SCORE
-SHORT ASSESSMENT
-ACTION if needed
-
-Categories:
+Required categories:
 
 1. Plot Progression
-Does the chapter materially advance the primary,
-secondary, mystery, or character plot?
-
 2. Chapter Objective
-Does the draft accomplish what the Chapter Plan says this
-chapter must accomplish?
-
 3. Character Development
-Do character actions, decisions, emotions, conflicts, and
-changes advance established arcs?
-
 4. Dialogue
-Is dialogue natural, character-specific, purposeful, and
-appropriate to the Dialogue Style target?
-
 5. Pacing
-Does scene movement match the selected Pacing target?
-
 6. Tension
-Does the chapter create meaningful pressure, uncertainty,
-risk, conflict, anticipation, or consequence?
-
 7. Subtext
-Does spoken and unspoken meaning match the selected Subtext
-target?
-
 8. Description
-Does description match the selected Description Density
-without becoming vague or excessive?
-
 9. Technical Credibility
-Are procedures, technology, operations, tactics, logistics,
-and technical details credible within the story world?
-
 10. Institutional / Political Realism
-Are organisations, authority, chains of command,
-bureaucratic pressures, political incentives, and
-institutional behaviour credible and appropriate to the
-selected target?
-
 11. Moral Complexity
-Do conflicts and choices achieve the selected Moral
-Complexity target without becoming artificially ambiguous?
-
 12. Continuity
-Does the chapter remain consistent with characters, events,
-timeline, world rules, previous chapters, and established
-facts?
-
 13. POV Consistency
-Is viewpoint controlled and deliberate? Identify accidental
-head-hopping or perspective violations.
-
 14. Exposition / Repetition
-Does the chapter avoid unnecessary explanation, repeated
-information, repeated emotional beats, and redundant
-description?
-
 15. Opening Strength
-Does the chapter establish immediate narrative purpose,
-interest, tension, character pressure, mystery, or forward
-movement?
-
 16. Ending / Hook
-Does the chapter ending create sufficient momentum,
-consequence, revelation, uncertainty, decision, or desire
-to continue?
+
+Use:
+
+## Editorial Scorecard
+
+| Category | Score | Assessment |
+| --- | --- | --- |
 
 =========================================================
-REPORT FORMAT
+PRIORITY REVISION RULES
 =========================================================
 
-Return the report using EXACTLY this broad structure:
+Only include genuine revision issues.
+
+Maximum 7.
+
+Each issue MUST contain:
+
+**PROBLEM:**
+
+**WHY IT MATTERS:**
+
+**RECOMMENDED APPROACH:**
+
+**SEVERITY:** Minor
+
+Severity MUST be exactly one of:
+
+Critical
+Major
+Moderate
+Minor
+
+Use Critical only for fundamental failures.
+
+Use Major for substantial problems requiring meaningful
+scene or structural rewriting.
+
+Use Moderate for localized issues worth correcting.
+
+Use Minor for small improvements that do not materially
+damage the chapter.
+
+Do NOT classify an issue as Moderate merely because it could
+be improved.
+
+If only Minor issues remain, that is acceptable.
+
+=========================================================
+OUTPUT FORMAT
+=========================================================
+
+Return exactly these sections:
 
 # Chapter {chapter_number} — Editor Analysis
 
 ## Editorial Scorecard
 
-| Category | Score | Assessment |
-| --- | ---: | --- |
-| Plot Progression | X.X/10 | ... |
-| Chapter Objective | X.X/10 | ... |
-| Character Development | X.X/10 | ... |
-| Dialogue | X.X/10 | ... |
-| Pacing | X.X/10 | ... |
-| Tension | X.X/10 | ... |
-| Subtext | X.X/10 | ... |
-| Description | X.X/10 | ... |
-| Technical Credibility | X.X/10 | ... |
-| Institutional / Political Realism | X.X/10 | ... |
-| Moral Complexity | X.X/10 | ... |
-| Continuity | X.X/10 | ... |
-| POV Consistency | X.X/10 | ... |
-| Exposition / Repetition | X.X/10 | ... |
-| Opening Strength | X.X/10 | ... |
-| Ending / Hook | X.X/10 | ... |
+Provide scorecard.
 
 ## Overall Assessment
 
-Give a concise professional assessment of the chapter as a
-whole.
-
-State what is working particularly well.
-
-State the principal weakness, if one genuinely exists.
+Concise professional assessment.
 
 ## Chapter Plan Compliance
 
-Identify which major Chapter Plan requirements were:
+Use:
 
-- Achieved
-- Partially achieved
-- Missed
-- Contradicted
+- Achieved:
+- Partially Achieved:
+- Missed:
+- Contradicted:
 
-If none were missed, explicitly say so.
+Use "None." where appropriate.
 
 ## Continuity Findings
 
-List genuine continuity problems.
+Only identify genuine continuity conflicts.
 
-Reference the established information being contradicted.
-
-If there are no meaningful continuity problems, state:
+If continuity is sound, write EXACTLY:
 
 No significant continuity conflicts detected.
 
 ## Character Findings
 
-Evaluate important character behaviour, motivation,
-relationships, voice, decisions, knowledge, and arc
-progression.
+Assess:
 
-Do not demand unnecessary emotional explanation.
+- motivation
+- behavior
+- voice
+- emotional logic
+- relationships
+- Character Bible consistency
 
 ## Style Target Findings
 
-Compare the draft directly against:
+Assess:
 
 - Writing Style Profile
-- Dialogue target
-- Technical Detail target
-- Pacing target
-- Moral Complexity target
-- Description Density target
-- Violence Treatment target
-- Institutional / Political Detail target
-- Subtext target
-
-Identify only meaningful mismatches.
+- Dialogue
+- Technical Detail
+- Pacing
+- Moral Complexity
+- Description Density
+- Violence Treatment
+- Institutional / Political Detail
+- Subtext
 
 ## Priority Revisions
 
-Provide no more than 7 revision priorities.
+List genuine problems only.
 
-Order them from most important to least important.
+If there are no meaningful revisions, write:
 
-Each priority must contain:
-
-PROBLEM:
-WHY IT MATTERS:
-RECOMMENDED APPROACH:
-SEVERITY: Critical / Major / Moderate / Minor
-
-Do not include trivial cosmetic changes here.
+None required.
 
 ## Optional Improvements
 
-List only genuinely useful optional improvements.
+Only genuinely optional suggestions.
 
-Do not invent suggestions simply because this section exists.
-
-Do not recommend changes that contradict strengths identified
-elsewhere in the analysis.
-
-Do not recommend additional POV characters, scenes,
-characters, exposition, or structural complexity unless the
-chapter has a demonstrated need for them.
-
-If no optional improvement would materially improve the
-chapter, write:
+If none:
 
 None recommended.
 
 ## Editor Verdict
 
-Choose EXACTLY ONE:
+You may provide your recommended verdict.
 
+Use exactly one of:
+
+EDITING COMPLETE
 READY FOR LIGHT POLISH
-
 NEEDS STANDARD EDIT
-
 NEEDS DEEP EDIT
-
 CONTINUITY REPAIR REQUIRED
 
-Then provide 2-4 sentences explaining why that verdict was
-selected.
+IMPORTANT:
 
-=========================================================
-FINAL REQUIREMENTS
-=========================================================
+Python will independently validate and may override your verdict
+based on the severities you report.
 
-Be specific to THIS chapter.
-
-Do not provide generic writing advice.
-
-Do not rewrite the chapter.
-
-Do not exaggerate minor issues.
-
-Do not invent continuity errors.
-
-The report must be useful as instructions for the later
-Rewrite Engine.
-
-The strongest chapters may legitimately receive high scores.
-Do not artificially lower scores for balance.
+Therefore make your severity classifications accurate.
 """
 
-    return call_ai(
+    editor_report = call_ai(
         EDITOR_ANALYST_PROMPT,
         user_prompt,
     )
 
+    editor_report = _force_editor_verdict(
+        editor_report,
+    )
 
-
+    return editor_report
 # =========================================================
 # EDITOR REWRITE ENGINE
 # =========================================================
