@@ -3811,11 +3811,11 @@ with editor_tab:
                         )
 
                         # -----------------------------------------
-                        # CREATE EDIT
+                        # CREATE TARGETED EDIT
                         # -----------------------------------------
 
                         if st.button(
-                            f"✍️ Create {editing_mode}",
+                            "✍️ Create Targeted Edit",
                             type="primary",
                             key=(
                                 f"rewrite_chapter_"
@@ -3823,16 +3823,21 @@ with editor_tab:
                             ),
                         ):
 
+                            selected_issue_texts = [
+                                item["text"]
+                                for item in extracted_issues
+                                if item["label"]
+                                in selected_issue_labels
+                            ]
+
                             if (
-                                targeted_editing
-                                and extracted_issues
-                                and not selected_issue_labels
+                                not selected_issue_texts
                                 and not additional_editing_instructions.strip()
                             ):
                                 st.error(
-                                    "Select at least one Analyzer issue "
-                                    "or enter an Additional Editing "
-                                    "Instruction."
+                                    "Select at least one issue in "
+                                    "Targeted Editing or enter instructions "
+                                    "in Additional Editing Instructions."
                                 )
 
                             else:
@@ -3862,18 +3867,8 @@ with editor_tab:
                                     current_protection_text,
                                 )
 
-                                selected_issue_texts = []
-
-                                if targeted_editing:
-                                    selected_issue_texts = [
-                                        item["text"]
-                                        for item in extracted_issues
-                                        if item["label"]
-                                        in selected_issue_labels
-                                    ]
-
                                 with st.spinner(
-                                    f"Creating {editing_mode} for "
+                                    f"Creating targeted edit for "
                                     f"Chapter "
                                     f"{editor_chapter_number}..."
                                 ):
@@ -3896,9 +3891,13 @@ with editor_tab:
                                                 editor_report=(
                                                     editor_report
                                                 ),
+
+                                                # Targeted edits are
+                                                # deliberately conservative.
                                                 editing_mode=(
-                                                    editing_mode
+                                                    "Light Polish"
                                                 ),
+
                                                 story_architecture=(
                                                     st.session_state
                                                     .story_architecture
@@ -3932,8 +3931,7 @@ with editor_tab:
 
                                         missing_locked = [
                                             passage
-                                            for passage
-                                            in protected_passages
+                                            for passage in protected_passages
                                             if passage
                                             not in new_edited_draft
                                         ]
@@ -4009,19 +4007,13 @@ with editor_tab:
                                             None,
                                         )
 
-                                        if targeted_editing:
-                                            st.success(
-                                                "Targeted edit completed. "
-                                                "Only the selected issues "
-                                                "were supplied as editing "
-                                                "targets."
-                                            )
-                                        else:
-                                            st.success(
-                                                f"{editing_mode} completed "
-                                                f"for Chapter "
-                                                f"{editor_chapter_number}."
-                                            )
+                                        st.success(
+                                            "Targeted edit completed. "
+                                            "Only the selected Targeted "
+                                            "Editing issues and additional "
+                                            "instructions were supplied "
+                                            "as editing targets."
+                                        )
 
                                         st.rerun()
 
@@ -4029,8 +4021,7 @@ with editor_tab:
                                         st.error(
                                             f"Chapter edit failed: "
                                             f"{error}"
-                                        )
-
+                                        )                                
                     # =============================================
                     # EDITED DRAFT WORKSPACE
                     # =============================================
