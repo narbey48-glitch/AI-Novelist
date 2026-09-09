@@ -27,4 +27,5 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.log
+# Local editor state
 editor_state.json
