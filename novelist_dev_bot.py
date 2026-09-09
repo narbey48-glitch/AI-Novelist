@@ -50,8 +50,1416 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # DEVELOPMENT BOT IDENTITY
 # ============================================================
 
-DEVELOPMENT_BOT_INSTRUCTIONS = """
+PROJECT_IDENTITY = {
+
+    "project_name": "AI Novelist",
+
+    "project_version": "0.30.0",
+
+    "current_task": 31,
+
+    "current_subtask": "31A",
+
+    "current_milestone": (
+        "Development Bot Intelligence Layer"
+    ),
+
+    "architecture_phase": (
+        "Foundation Complete"
+    ),
+
+    "router_version": (
+        "Router v1"
+    ),
+}
+
+
+def get_project_identity():
+    """
+    Return the current project identity.
+    """
+
+    return dict(
+        PROJECT_IDENTITY
+    )
+
+
+def get_project_version():
+    """
+    Return the current project version.
+    """
+
+    return PROJECT_IDENTITY[
+        "project_version"
+    ]
+
+
+def get_current_task():
+    """
+    Return the active task.
+    """
+
+    return (
+        PROJECT_IDENTITY[
+            "current_task"
+        ],
+        PROJECT_IDENTITY[
+            "current_subtask"
+        ],
+    )
+
+
+def get_current_milestone():
+    """
+    Return the current milestone.
+    """
+
+    return PROJECT_IDENTITY[
+        "current_milestone"
+    ]
+
+
+DEVELOPMENT_BOT_CAPABILITIES = {
+
+    "project_analysis": True,
+
+    "project_structure": True,
+
+    "project_index": True,
+
+    "target_discovery": True,
+
+    "dependency_analysis": True,
+
+    "reverse_dependency_analysis": True,
+
+    "safe_file_reading": True,
+
+    "implementation": False,
+
+    "automatic_file_modification": False,
+
+    "automatic_project_changes": False,
+}
+
+
+def get_bot_capabilities():
+    """
+    Return Development Bot capabilities.
+    """
+
+    return dict(
+        DEVELOPMENT_BOT_CAPABILITIES
+    )
+
+
+def can_perform(
+    capability: str,
+):
+    """
+    Return True if the Development Bot
+    supports the requested capability.
+    """
+
+    return (
+        DEVELOPMENT_BOT_CAPABILITIES.get(
+            capability,
+            False,
+        )
+    )
+
+
+DEVELOPMENT_BOT_STATE = {
+
+    "mode": "READ_ONLY",
+
+    "implementation_enabled": False,
+
+    "automatic_changes": False,
+
+    "testing_enabled": False,
+
+    "approval_required": True,
+}
+
+
+def get_bot_state():
+    """
+    Return the current Development Bot state.
+    """
+
+    return dict(
+        DEVELOPMENT_BOT_STATE
+    )
+
+
+def get_current_mode():
+    """
+    Return the current operating mode.
+    """
+
+    return DEVELOPMENT_BOT_STATE[
+        "mode"
+    ]
+
+
+def is_read_only():
+    """
+    Return True when the bot is operating
+    in read-only mode.
+    """
+
+    return (
+        DEVELOPMENT_BOT_STATE[
+            "mode"
+        ]
+        == "READ_ONLY"
+    )
+
+
+PROJECT_FEATURES = {
+
+    "ai_router": "Complete",
+
+    "provider_registry": "Complete",
+
+    "development_bot": "In Development",
+
+    "story_architect": "Complete",
+
+    "character_engine": "Complete",
+
+    "world_builder": "Complete",
+
+    "timeline_builder": "Complete",
+
+    "chapter_planner": "Complete",
+
+    "chapter_writer": "Complete",
+
+    "editor_analyzer": "Complete",
+
+    "specialist_bot_system": "Planned",
+
+    "publishing_system": "Planned",
+
+    "marketplace": "Planned",
+}
+
+
+def get_project_features():
+    """
+    Return the current project feature map.
+    """
+
+    return dict(
+        PROJECT_FEATURES
+    )
+
+
+def get_feature_status(
+    feature_name: str,
+):
+    """
+    Return the status of a single feature.
+    """
+
+    return PROJECT_FEATURES.get(
+        feature_name,
+        "Unknown",
+    )
+
+
+PROJECT_MILESTONES = {
+
+    "foundation": "Complete",
+
+    "ai_router": "Complete",
+
+    "development_bot": "In Progress",
+
+    "specialist_bot_framework": "Planned",
+
+    "commercial_platform": "Planned",
+
+    "internal_alpha": "Future",
+
+    "closed_beta": "Future",
+
+    "public_release": "Future",
+}
+
+
+def get_project_milestones():
+    """
+    Return all project milestones.
+    """
+
+    return dict(
+        PROJECT_MILESTONES
+    )
+
+
+def get_milestone_status(
+    milestone_name: str,
+):
+    """
+    Return the status of a project milestone.
+    """
+
+    return PROJECT_MILESTONES.get(
+        milestone_name,
+        "Unknown",
+    )
+
+
+PROJECT_STATISTICS = {
+
+    "completed_major_tasks": 30,
+
+    "current_major_task": 31,
+
+    "completed_subtasks": 5,
+
+    "supported_ai_providers": 6,
+
+    "implemented_ai_providers": 1,
+
+    "development_stage": (
+        "Development Bot Intelligence"
+    ),
+}
+
+
+def get_project_statistics():
+    """
+    Return overall project statistics.
+    """
+
+    return dict(
+        PROJECT_STATISTICS
+    )
+
+
+def get_project_statistic(
+    statistic_name: str,
+):
+    """
+    Return a single project statistic.
+    """
+
+    return PROJECT_STATISTICS.get(
+        statistic_name
+    )
+
+
+DEVELOPMENT_BOT_COMMANDS = {
+
+    "structure": "Project Structure",
+
+    "project-files": "Project File List",
+
+    "index": "Project Index",
+
+    "index-analyze": "Project Analysis",
+
+    "find": "Target Discovery",
+
+    "source": "Target Source",
+
+    "deps": "Dependency Analysis",
+
+    "callers": "Reverse Dependency Analysis",
+
+    "project": "Project Status",
+
+    "help": "Available Commands",
+}
+
+
+def get_available_commands():
+    """
+    Return all registered Development Bot commands.
+    """
+
+    return dict(
+        DEVELOPMENT_BOT_COMMANDS
+    )
+
+
+def command_exists(
+    command_name: str,
+):
+    """
+    Return True if a command is registered.
+    """
+
+    return (
+        command_name
+        in DEVELOPMENT_BOT_COMMANDS
+    )
+
+
+DEVELOPMENT_BOT_COMMAND_CATEGORIES = {
+
+    "Project": [
+        "structure",
+        "project-files",
+        "project",
+    ],
+
+    "Analysis": [
+        "index",
+        "index-analyze",
+    ],
+
+    "Discovery": [
+        "find",
+        "source",
+    ],
+
+    "Dependencies": [
+        "deps",
+        "callers",
+    ],
+
+    "System": [
+        "help",
+    ],
+}
+
+
+def get_command_categories():
+    """
+    Return all command categories.
+    """
+
+    return {
+        category: list(commands)
+        for category, commands
+        in DEVELOPMENT_BOT_COMMAND_CATEGORIES.items()
+    }
+
+
+def get_commands_for_category(
+    category_name: str,
+):
+    """
+    Return all commands within a category.
+    """
+
+    return list(
+        DEVELOPMENT_BOT_COMMAND_CATEGORIES.get(
+            category_name,
+            [],
+        )
+    )
+
+
+DEVELOPMENT_BOT_COMMAND_HELP = {
+
+    "structure":
+        "Display the project folder structure.",
+
+    "project-files":
+        "List approved project Python files.",
+
+    "project":
+        "Display current project status.",
+
+    "index":
+        "Build the project index.",
+
+    "index-analyze":
+        "Analyze the indexed project.",
+
+    "find":
+        "Locate functions or classes.",
+
+    "source":
+        "Display source for a selected target.",
+
+    "deps":
+        "Show direct internal dependencies.",
+
+    "callers":
+        "Show reverse dependencies.",
+
+    "help":
+        "Display available Development Bot commands.",
+}
+
+
+def get_command_help():
+    """
+    Return the Development Bot help registry.
+    """
+
+    return dict(
+        DEVELOPMENT_BOT_COMMAND_HELP
+    )
+
+
+def get_command_description(
+    command_name: str,
+):
+    """
+    Return the description for a command.
+    """
+
+    return DEVELOPMENT_BOT_COMMAND_HELP.get(
+        command_name,
+        "Unknown command.",
+    )
+
+
+DEVELOPMENT_BOT_COMMAND_ALIASES = {
+
+    "status": "project",
+
+    "files": "project-files",
+
+    "search": "find",
+
+    "dependencies": "deps",
+
+    "reverse-dependencies": "callers",
+
+    "commands": "help",
+}
+
+
+def get_command_aliases():
+    """
+    Return all registered command aliases.
+    """
+
+    return dict(
+        DEVELOPMENT_BOT_COMMAND_ALIASES
+    )
+
+
+def resolve_command(
+    command_name: str,
+):
+    """
+    Resolve a command alias to its
+    canonical Development Bot command.
+    """
+
+    command_name = command_name.strip()
+
+    if command_exists(
+        command_name
+    ):
+        return command_name
+
+    return DEVELOPMENT_BOT_COMMAND_ALIASES.get(
+        command_name,
+        command_name,
+    )
+
+
+DEVELOPMENT_BOT_COMMAND_PERMISSIONS = {
+
+    "structure": True,
+
+    "project-files": True,
+
+    "project": True,
+
+    "index": True,
+
+    "index-analyze": True,
+
+    "find": True,
+
+    "source": True,
+
+    "deps": True,
+
+    "callers": True,
+
+    "help": True,
+}
+
+
+def get_command_permissions():
+    """
+    Return the Development Bot
+    command permissions.
+    """
+
+    return dict(
+        DEVELOPMENT_BOT_COMMAND_PERMISSIONS
+    )
+
+
+def is_command_permitted(
+    command_name: str,
+):
+    """
+    Return True if a command is
+    currently permitted.
+    """
+
+    command_name = resolve_command(
+        command_name
+    )
+
+    return DEVELOPMENT_BOT_COMMAND_PERMISSIONS.get(
+        command_name,
+        False,
+    )
+
+
+DEVELOPMENT_BOT_COMMAND_METADATA = {
+
+    "structure": {
+        "category": "Project",
+        "read_only": True,
+    },
+
+    "project-files": {
+        "category": "Project",
+        "read_only": True,
+    },
+
+    "project": {
+        "category": "Project",
+        "read_only": True,
+    },
+
+    "index": {
+        "category": "Analysis",
+        "read_only": True,
+    },
+
+    "index-analyze": {
+        "category": "Analysis",
+        "read_only": True,
+    },
+
+    "find": {
+        "category": "Discovery",
+        "read_only": True,
+    },
+
+    "source": {
+        "category": "Discovery",
+        "read_only": True,
+    },
+
+    "deps": {
+        "category": "Dependencies",
+        "read_only": True,
+    },
+
+    "callers": {
+        "category": "Dependencies",
+        "read_only": True,
+    },
+
+    "help": {
+        "category": "System",
+        "read_only": True,
+    },
+}
+
+
+def get_command_metadata():
+    """
+    Return metadata for all commands.
+    """
+
+    return dict(
+        DEVELOPMENT_BOT_COMMAND_METADATA
+    )
+
+
+def get_metadata_for_command(
+    command_name: str,
+):
+    """
+    Return metadata for a single command.
+    """
+
+    command_name = resolve_command(
+        command_name
+    )
+
+    return DEVELOPMENT_BOT_COMMAND_METADATA.get(
+        command_name,
+        {},
+    )
+
+
+def validate_command(
+    command_name: str,
+):
+    """
+    Validate a Development Bot command.
+    """
+
+    resolved_command = resolve_command(
+        command_name
+    )
+
+    exists = command_exists(
+        resolved_command
+    )
+
+    return {
+        "requested": command_name,
+        "resolved": resolved_command,
+        "exists": exists,
+        "permitted": (
+            is_command_permitted(
+                resolved_command
+            )
+            if exists
+            else False
+        ),
+        "metadata": (
+            get_metadata_for_command(
+                resolved_command
+            )
+            if exists
+            else {}
+        ),
+        "description": (
+            get_command_description(
+                resolved_command
+            )
+            if exists
+            else "Unknown command."
+        ),
+    }
+
+
+def get_command_summary():
+    """
+    Return a complete summary of every
+    registered Development Bot command.
+    """
+
+    summary = {}
+
+    for command in get_available_commands():
+
+        summary[command] = {
+            "description": (
+                get_command_description(
+                    command
+                )
+            ),
+            "category": (
+                get_metadata_for_command(
+                    command
+                ).get(
+                    "category",
+                    "Unknown",
+                )
+            ),
+            "permitted": (
+                is_command_permitted(
+                    command
+                )
+            ),
+            "read_only": (
+                get_metadata_for_command(
+                    command
+                ).get(
+                    "read_only",
+                    False,
+                )
+            ),
+        }
+
+    return summary
+
+
+PROJECT_CONTEXT = {
+
+    "active_project": "AI Novelist",
+
+    "current_major_task": 31,
+
+    "current_subtask": "31O",
+
+    "current_focus": (
+        "Development Bot Intelligence Layer"
+    ),
+
+    "operating_mode": (
+        get_current_mode()
+    ),
+}
+
+
+def get_project_context():
+    """
+    Return the current project context.
+    """
+
+    return dict(
+        PROJECT_CONTEXT
+    )
+
+
+def update_project_context(
+    key,
+    value,
+):
+    """
+    Update a single project context value.
+    """
+
+    if key in PROJECT_CONTEXT:
+
+        PROJECT_CONTEXT[key] = value
+
+
+DEVELOPMENT_SESSION = {
+
+    "active": True,
+
+    "major_task": 31,
+
+    "current_subtask": "31P",
+
+    "mode": get_current_mode(),
+
+    "changes_pending": True,
+
+    "level_1_tests_passed": 15,
+}
+
+
+def get_development_session():
+    """
+    Return the current development session.
+    """
+
+    return dict(
+        DEVELOPMENT_SESSION
+    )
+
+
+def update_development_session(
+    key,
+    value,
+):
+    """
+    Update a development session value.
+    """
+
+    if key in DEVELOPMENT_SESSION:
+
+        DEVELOPMENT_SESSION[key] = value
+
+
+DEVELOPMENT_CHECKPOINTS = {
+
+    "last_completed_major_task": 30,
+
+    "current_major_task": 31,
+
+    "current_subtask": "31Q",
+
+    "last_verified_subtask": "31P",
+
+    "router_complete": True,
+
+    "development_bot_phase": (
+        "Intelligence Layer"
+    ),
+}
+
+
+def get_development_checkpoints():
+    """
+    Return development checkpoints.
+    """
+
+    return dict(
+        DEVELOPMENT_CHECKPOINTS
+    )
+
+
+def update_development_checkpoint(
+    key,
+    value,
+):
+    """
+    Update a development checkpoint.
+    """
+
+    if key in DEVELOPMENT_CHECKPOINTS:
+
+        DEVELOPMENT_CHECKPOINTS[key] = value
+
+
+def get_last_verified_subtask():
+    """
+    Return the last verified subtask.
+    """
+
+    return DEVELOPMENT_CHECKPOINTS[
+        "last_verified_subtask"
+    ]
+
+
+DEVELOPMENT_HEALTH = {
+
+    "project_status": "Healthy",
+
+    "level_1_tests": "Passing",
+
+    "current_major_task": 31,
+
+    "current_subtask": "31R",
+
+    "architecture_status": (
+        "Stable"
+    ),
+
+    "ready_for_next_task": True,
+}
+
+
+def get_development_health():
+    """
+    Return the current development health.
+    """
+
+    return dict(
+        DEVELOPMENT_HEALTH
+    )
+
+
+def update_development_health(
+    key,
+    value,
+):
+    """
+    Update a development health value.
+    """
+
+    if key in DEVELOPMENT_HEALTH:
+
+        DEVELOPMENT_HEALTH[key] = value
+
+
+def is_project_healthy():
+    """
+    Return True when the project is
+    considered healthy.
+    """
+
+    return (
+        DEVELOPMENT_HEALTH[
+            "project_status"
+        ]
+        == "Healthy"
+    )
+
+
+DEVELOPMENT_PRIORITIES = {
+
+    "highest_priority": (
+        "Development Bot Intelligence"
+    ),
+
+    "current_major_task": 31,
+
+    "current_subtask": "31S",
+
+    "next_major_task": 32,
+
+    "launch_priority": (
+        "Continue platform development"
+    ),
+
+    "commercial_focus": (
+        "Build MVP"
+    ),
+}
+
+
+def get_development_priorities():
+    """
+    Return the current development
+    priorities.
+    """
+
+    return dict(
+        DEVELOPMENT_PRIORITIES
+    )
+
+
+def get_highest_priority():
+    """
+    Return the highest development
+    priority.
+    """
+
+    return DEVELOPMENT_PRIORITIES[
+        "highest_priority"
+    ]
+
+
+def update_development_priority(
+    key,
+    value,
+):
+    """
+    Update a development priority.
+    """
+
+    if key in DEVELOPMENT_PRIORITIES:
+
+        DEVELOPMENT_PRIORITIES[key] = value
+
+
+DEVELOPMENT_GOALS = {
+
+    "primary_goal": (
+        "Build the world's leading AI-assisted novel development platform"
+    ),
+
+    "current_focus": (
+        "Development Bot Intelligence Layer"
+    ),
+
+    "next_focus": (
+        "Advanced reasoning and project analysis"
+    ),
+
+    "long_term_target": (
+        "Specialist Bot Ecosystem"
+    ),
+
+    "commercial_target": (
+        "Launch AI Novelist MVP"
+    ),
+}
+
+
+def get_development_goals():
+    """
+    Return the Development Bot goals.
+    """
+
+    return dict(
+        DEVELOPMENT_GOALS
+    )
+
+
+def get_primary_goal():
+    """
+    Return the primary development goal.
+    """
+
+    return DEVELOPMENT_GOALS[
+        "primary_goal"
+    ]
+
+
+def update_development_goal(
+    key,
+    value,
+):
+    """
+    Update a development goal.
+    """
+
+    if key in DEVELOPMENT_GOALS:
+
+        DEVELOPMENT_GOALS[key] = value
+# ============================================================
+# DEVELOPMENT ANALYSIS PROFILES
+# ============================================================
+
+DEVELOPMENT_ANALYSIS_PROFILES = {
+
+    "architecture": {
+        "enabled": True,
+        "priority": 10,
+        "description": (
+            "Evaluate software architecture, modularity, "
+            "layer separation and long-term scalability."
+        ),
+    },
+
+    "code_quality": {
+        "enabled": True,
+        "priority": 10,
+        "description": (
+            "Review readability, maintainability, "
+            "consistency and code organization."
+        ),
+    },
+
+    "dependencies": {
+        "enabled": True,
+        "priority": 9,
+        "description": (
+            "Inspect internal dependencies and identify "
+            "tight coupling or circular references."
+        ),
+    },
+
+    "performance": {
+        "enabled": True,
+        "priority": 8,
+        "description": (
+            "Identify unnecessary processing, repeated work "
+            "and potential performance improvements."
+        ),
+    },
+
+    "reliability": {
+        "enabled": True,
+        "priority": 10,
+        "description": (
+            "Check for robustness, defensive coding and "
+            "failure handling."
+        ),
+    },
+
+    "extensibility": {
+        "enabled": True,
+        "priority": 9,
+        "description": (
+            "Evaluate how easily future features can be added."
+        ),
+    },
+
+    "ai_integration": {
+        "enabled": True,
+        "priority": 10,
+        "description": (
+            "Review AI routing, provider abstraction and "
+            "future multi-model compatibility."
+        ),
+    },
+}
+
+
+def get_analysis_profiles():
+    """
+    Return every registered Development Analysis Profile.
+    """
+
+    return dict(DEVELOPMENT_ANALYSIS_PROFILES)
+
+
+def get_analysis_profile(profile_name):
+    """
+    Return one analysis profile.
+    """
+
+    return DEVELOPMENT_ANALYSIS_PROFILES.get(profile_name)
+
+
+def analysis_profile_exists(profile_name):
+    """
+    Return True if the requested profile exists.
+    """
+
+    return profile_name in DEVELOPMENT_ANALYSIS_PROFILES
+
+
+def get_enabled_analysis_profiles():
+    """
+    Return only enabled analysis profiles.
+    """
+
+    return {
+        name: profile
+        for name, profile
+        in DEVELOPMENT_ANALYSIS_PROFILES.items()
+        if profile["enabled"]
+    }  
+# ============================================================
+# DEVELOPMENT ANALYSIS REPORT TEMPLATE
+# ============================================================
+
+DEVELOPMENT_ANALYSIS_TEMPLATE = {
+
+    "target": None,
+
+    "analysis_profile": None,
+
+    "status": "Not Started",
+
+    "findings": [],
+
+    "risks": [],
+
+    "recommendations": [],
+
+    "confidence": 0,
+
+    "summary": "",
+}
+
+
+def create_analysis_report(
+    target,
+    profile,
+):
+    """
+    Create a new Development Bot analysis report.
+    """
+
+    report = dict(
+        DEVELOPMENT_ANALYSIS_TEMPLATE
+    )
+
+    report["target"] = target
+
+    report["analysis_profile"] = profile
+
+    report["status"] = "Created"
+
+    return report  
+def add_finding(
+    report,
+    finding,
+):
+    """
+    Add a finding to an analysis report.
+    """
+
+    report["findings"].append(finding)
+
+
+def add_risk(
+    report,
+    risk,
+):
+    """
+    Add a risk to an analysis report.
+    """
+
+    report["risks"].append(risk)
+
+
+def add_recommendation(
+    report,
+    recommendation,
+):
+    """
+    Add a recommendation to an analysis report.
+    """
+
+    report["recommendations"].append(
+        recommendation
+    )
+
+
+def finalize_analysis_report(
+    report,
+    summary,
+    confidence,
+):
+    """
+    Finalize an analysis report.
+    """
+
+    report["summary"] = summary
+
+    report["confidence"] = confidence
+
+    report["status"] = "Completed"
+
+    return report  
+# ============================================================
+# DEVELOPMENT ANALYSIS SEVERITY
+# ============================================================
+
+DEVELOPMENT_ANALYSIS_SEVERITY = {
+
+    "critical": 5,
+
+    "high": 4,
+
+    "medium": 3,
+
+    "low": 2,
+
+    "info": 1,
+}
+
+
+def get_analysis_severity():
+    """
+    Return the standard analysis severity levels.
+    """
+
+    return dict(
+        DEVELOPMENT_ANALYSIS_SEVERITY
+    )
+
+
+def severity_exists(
+    severity_name,
+):
+    """
+    Return True if the severity exists.
+    """
+
+    return (
+        severity_name.lower()
+        in DEVELOPMENT_ANALYSIS_SEVERITY
+    )
+
+
+def get_severity_score(
+    severity_name,
+):
+    """
+    Return the numeric score for a severity.
+    """
+
+    return DEVELOPMENT_ANALYSIS_SEVERITY.get(
+        severity_name.lower(),
+        0,
+    )  
+# ============================================================
+# DEVELOPMENT ANALYSIS CONFIDENCE
+# ============================================================
+
+DEVELOPMENT_ANALYSIS_CONFIDENCE = {
+
+    "confirmed": 100,
+
+    "very_high": 90,
+
+    "high": 75,
+
+    "medium": 50,
+
+    "low": 25,
+
+    "unknown": 0,
+}
+
+
+def get_analysis_confidence():
+    """
+    Return the standard confidence levels.
+    """
+
+    return dict(
+        DEVELOPMENT_ANALYSIS_CONFIDENCE
+    )
+
+
+def confidence_exists(
+    confidence_name,
+):
+    """
+    Return True if a confidence level exists.
+    """
+
+    return (
+        confidence_name.lower()
+        in DEVELOPMENT_ANALYSIS_CONFIDENCE
+    )
+
+
+def get_confidence_score(
+    confidence_name,
+):
+    """
+    Return the numeric score for a confidence level.
+    """
+
+    return DEVELOPMENT_ANALYSIS_CONFIDENCE.get(
+        confidence_name.lower(),
+        0,
+    )
+# ============================================================
+# DEVELOPMENT ANALYSIS EVIDENCE
+# ============================================================
+
+DEVELOPMENT_ANALYSIS_EVIDENCE = {
+
+    "confirmed": (
+        "Supported directly by inspected source code."
+    ),
+
+    "inferred": (
+        "Reasonable conclusion based on available evidence."
+    ),
+
+    "possible": (
+        "Potential issue requiring further verification."
+    ),
+
+    "unknown": (
+        "Insufficient evidence to determine."
+    ),
+}
+
+
+def get_analysis_evidence():
+    """
+    Return the standard evidence classifications.
+    """
+
+    return dict(
+        DEVELOPMENT_ANALYSIS_EVIDENCE
+    )
+
+
+def evidence_exists(
+    evidence_name,
+):
+    """
+    Return True if an evidence level exists.
+    """
+
+    return (
+        evidence_name.lower()
+        in DEVELOPMENT_ANALYSIS_EVIDENCE
+    )
+
+
+def get_evidence_description(
+    evidence_name,
+):
+    """
+    Return the description for an evidence level.
+    """
+
+    return DEVELOPMENT_ANALYSIS_EVIDENCE.get(
+        evidence_name.lower(),
+        "Unknown evidence classification.",
+    )
+DEVELOPMENT_BOT_INSTRUCTIONS = f"""
 You are the Novelist Development Bot.
+
+Project:
+    {PROJECT_IDENTITY["project_name"]}
+
+Version:
+    {PROJECT_IDENTITY["project_version"]}
+
+Current Development Task:
+    {PROJECT_IDENTITY["current_task"]}
+
+Current Subtask:
+    {PROJECT_IDENTITY["current_subtask"]}
+
+Current Milestone:
+    {PROJECT_IDENTITY["current_milestone"]}
+
+Architecture Phase:
+    {PROJECT_IDENTITY["architecture_phase"]}
 
 Your job is to help design, test, improve, debug and develop an
 AI-powered professional novel-writing application.
@@ -118,8 +1526,6 @@ Help develop the Novelist into a sophisticated AI-assisted
 professional fiction development, writing, editing and publishing
 platform.
 """
-
-
 # ============================================================
 # SAFETY SETTINGS
 # ============================================================
